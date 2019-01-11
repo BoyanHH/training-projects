@@ -1,0 +1,57 @@
+root@boyan-debian:/home/boyan/Documents# cat names 
+apache2.service
+cron.service
+console-setup.service
+abrakadabra
+
+root@boyan-debian:/home/boyan/Documents# python2.7 monitorArg.py names
+-----------------------------------------------------
+Process name: apache2.service
+PID: 466
+Status(systemctl):  active (running) since Wed 2019-01-02 10:36:06 EET; 2 days ago
+
+INFORMATION FROM PSUTIL
+Status:sleeping
+%CPU(1s interval): 0.0
+CPU times: pcputimes(user=4.43, system=2.14, children_user=46.97, children_system=58.77)
+%memory used: 0.206989743964
+memory fullinfo: pfullmem(rss=7892992, vms=115695616, shared=6131712, text=638976, lib=0, data=1978368, dirty=0, uss=2129920, pss=3187712, swap=499712)
+IO: pio(read_count=205558, write_count=205174, read_bytes=4423680, write_bytes=9080832)
+Amount of threads: 1
+
+INFORMATION FROM TOP
+%CPU:  0.0
+%MEM: 0.2
+CPU time used:  0:06.57 apache2
+
+
+Tasks(from systemctl): 56
+-----------------------------------------------------
+Process name: cron.service
+PID: 348
+Status(systemctl):  active (running) since Wed 2019-01-02 10:36:00 EET; 2 days ago
+
+INFORMATION FROM PSUTIL
+Status:sleeping
+%CPU(1s interval): 0.0
+CPU times: pcputimes(user=0.12, system=0.18, children_user=0.48, children_system=0.31)
+%memory used: 0.0426439690471
+memory fullinfo: pfullmem(rss=1626112, vms=30375936, shared=1441792, text=45056, lib=0, data=483328, dirty=0, uss=229376, pss=389120, swap=221184)
+IO: pio(read_count=15129, write_count=344, read_bytes=3895296, write_bytes=0)
+Amount of threads: 1
+
+INFORMATION FROM TOP
+%CPU:  0.0
+%MEM: 0.0
+CPU time used:  0:00.30 cron
+
+
+Tasks(from systemctl): 1
+-----------------------------------------------------
+Process name: console-setup.service
+PID: 241
+Status(systemctl):  active (exited) since Wed 2019-01-02 10:35:57 EET; 2 days ago
+
+-----------------------------------------------------
+Process name: abrakadabra
+No such process Exists

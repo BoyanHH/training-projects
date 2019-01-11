@@ -1,0 +1,47 @@
+
+public class segments {
+  public static void main(String[] args){
+      //statichno zadadeni za po-lesno testvane
+      int n=20;
+      int a=3;
+      int b=2;
+      int c=3;
+      int temp=0;
+      int adots[] = new int[8];
+      int bdots[] = new int[11];
+      //suzdavame masiva ot tochki a
+      adots[0]=0;
+      bdots[0]=0;
+      for(int i=a;n>=i;i+=a){
+      adots[temp+1]+=i;
+      System.out.println("array a: "+ adots[temp]);
+      temp++;
+      }
+      //masiva ot tochki b
+      temp=0;
+      for(int i=b;n>=i;i+=b){
+      bdots[temp+1]+=i;
+      System.out.println("array b: "+ bdots[temp]);
+      temp++;
+      }
+      //ot cqloto razstoqnie n vadim razstoqnieto, koeto ne e zaeto ot cherveni linii
+      for(int i=0;adots.length>i;i++){
+               for(int j=0;bdots.length>j;j++){
+                  // System.out.println("pairs are "+ adots[i] + " " + bdots[j]); #TESTING PURPOSES
+                   if(adots[i]>bdots[j]){
+                       if(adots[i]-bdots[j]==c){
+                           System.out.println("Proverka uspeshna =" + adots[i] + " - " +bdots[j]);
+                       n-=c;
+                       }
+                   }
+                   if(bdots[j]>adots[i]){
+                       if(bdots[j]-adots[i]==c){
+                                                      System.out.println("Proverka uspeshna =" + bdots[j] + " - " +adots[i]);
+                           n-=c;
+                       }
+                   }
+               }
+      }
+      System.out.println("Answer "+n);
+  }  
+}
