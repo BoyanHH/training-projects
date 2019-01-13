@@ -6,6 +6,7 @@ from subprocess import PIPE
 
 
 def checkDependancies():
+    """Checks for dependencies"""
     if subprocess.call('grep > /dev/null 2>&1', shell=True)==127:
         print("Missing dependancy: grep")
         exit(3)
@@ -15,6 +16,7 @@ def checkDependancies():
 
 
 def getProcessNames(filename):
+    """Opens the file(that is an argument when running the program), reads the file, and splits by newline """
     try:
         num_lines = sum(1 for line in open(filename))
         with open(filename,'r') as file:
@@ -27,6 +29,7 @@ def getProcessNames(filename):
     
 
 def getPID(processName):
+    """Uses systemctl show to get PID, if no PID is available checks if service is loaded/inactive/not-found"""
     command="systemctl show "+processName
     command+=" -p MainPID"
     try:
@@ -58,6 +61,7 @@ def getPID(processName):
 
 
 def getStatus(processName):
+    """Uses systemctl status PROCESSNAME to get information about when process was started(how long ago) """
     ##ne e nujen try i except za CalledProcessError?
     command="systemctl status "+processName
     command+=" |grep Active:"
@@ -67,6 +71,7 @@ def getStatus(processName):
 
 
 def getPSUTILinfo(PID):
+    """Uses psutil to get status, CPU info, memory info, io info, amount of threads and CMDL that called the process"""
     try:
         p=psutil.Process(PID)
         print("###INFORMATION FROM PSUTIL###\n")
@@ -104,6 +109,7 @@ def getPSUTILinfo(PID):
         print("Need root access(psutil) for process PID:"+str(PID))
         
 def amountOfChildProcesses(PID):
+    """Uses systemctl show to get the amount of chlid processes (TasksCUrrent)"""
     command="systemctl show "+processName
     command+=" -p TasksCurrent"
     output=subprocess.check_output([command], shell=True, stderr=PIPE)
