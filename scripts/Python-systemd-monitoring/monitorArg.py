@@ -25,13 +25,14 @@ def getProcessNames(filename):
         print("Could not read file: "+str(filename))        
         exit(4)
     processNames=content.split('\n')
+    file.close()
     return processNames
     
 
 def getPID(processName):
     """Uses systemctl show to get PID, if no PID is available checks if service is loaded/inactive/not-found"""
     command="systemctl show "+processName
-    command+=" -p MainPID"
+    command+=" -p MainPID,TasksCurrent"
     try:
         output=subprocess.check_output([command], shell=True, stderr=PIPE)
     except subprocess.CalledProcessError:
@@ -54,10 +55,13 @@ def getPID(processName):
             return False;
         
     output=output.split("=")
-    if(output[1]=="0\n"):
+    outputPID=output[1].split('\n')
+    if(outputPID[0]=="0"):
         print("No such process Exists: "+str(processName))
         return False;
-    return output[1]
+    print("Amount of child processes:"+output[2])
+    outputPID=output[1].split('\n')
+    return outputPID[0]
 
 
 def getStatus(processName):
@@ -86,7 +90,7 @@ def getPSUTILinfo(PID):
             print(cpuTimes[x])
         
         print("%memory used="+str(p.memory_percent()))
-        print("Command line that called process="+str(p.cmdline()))
+        print("CommandLineThatCalledProcess="+''.join(p.cmdline()))
 
         #NEEDS ROOT###########################
         print("###Full memory Info:###")
@@ -108,12 +112,13 @@ def getPSUTILinfo(PID):
     except psutil.AccessDenied:
         print("Need root access(psutil) for process PID="+str(PID))
         
-def amountOfChildProcesses(PID):
-    """Uses systemctl show to get the amount of chlid processes (TasksCUrrent)"""
-    command="systemctl show "+processName
-    command+=" -p TasksCurrent"
-    output=subprocess.check_output([command], shell=True, stderr=PIPE)
-    return output
+#def amountOfChildProcesses(PID):
+###MOVED TO GETMAIN PID SO I EXECUTE SYSTEMCTL SHOW ONLY ONCE
+ #   """Uses systemctl show to get the amount of chlid processes (TasksCUrrent)"""
+  #  command="systemctl show "+processName
+   # command+=" -p TasksCurrent"
+    #output=subprocess.check_output([command], shell=True, stderr=PIPE)
+    #return output
 ##----------------START--------------------
 checkDependancies()
 ##get arguments(file name)    
@@ -141,6 +146,4 @@ while processNumber<len(processNames)-1:
     print("Status(systemctl)="+status)
     if "running" in status:
         getPSUTILinfo(int(PID))
-        print((amountOfChildProcesses(int(PID))))
-
     processNumber+=1
