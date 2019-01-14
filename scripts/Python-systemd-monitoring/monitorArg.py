@@ -75,8 +75,8 @@ def getPSUTILinfo(PID):
     try:
         p=psutil.Process(PID)
         print("###INFORMATION FROM PSUTIL###\n")
-        print("Status:"+str(p.status()))
-        print("%CPU(.45s interval): "+str(p.cpu_percent(interval=0.45)))
+        print("Status="+str(p.status()))
+        print("%CPU(.45s interval)="+str(p.cpu_percent(interval=0.45)))
 
         print("###CPU TIMES:###")        
         cpuTimes=str(p.cpu_times())        
@@ -85,8 +85,8 @@ def getPSUTILinfo(PID):
         for x in range(4):
             print(cpuTimes[x])
         
-        print("%memory used: "+str(p.memory_percent()))
-        print("Command line that called process: "+str(p.cmdline()))
+        print("%memory used="+str(p.memory_percent()))
+        print("Command line that called process="+str(p.cmdline()))
 
         #NEEDS ROOT###########################
         print("###Full memory Info:###")
@@ -104,9 +104,9 @@ def getPSUTILinfo(PID):
             print(IOinfo[x])
         #NEEDS ROOT ^
         print("")
-        print("Amount of threads: "+str(p.num_threads()))
+        print("Amount of threads="+str(p.num_threads()))
     except psutil.AccessDenied:
-        print("Need root access(psutil) for process PID:"+str(PID))
+        print("Need root access(psutil) for process PID="+str(PID))
         
 def amountOfChildProcesses(PID):
     """Uses systemctl show to get the amount of chlid processes (TasksCUrrent)"""
@@ -136,9 +136,9 @@ while processNumber<len(processNames)-1:
         if(PID==False):
             processNumber+=1
     
-    print("PID: "+str(PID))
+    print("PID="+str(PID))
     status=getStatus(processName)
-    print("Status(systemctl): "+status)
+    print("Status(systemctl)="+status)
     if "running" in status:
         getPSUTILinfo(int(PID))
         print((amountOfChildProcesses(int(PID))))
