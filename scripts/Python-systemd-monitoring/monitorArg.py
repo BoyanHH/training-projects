@@ -4,7 +4,18 @@ import os
 import argparse
 import sys
 import configparser
+import time
 
+
+#ERRORS: ##TODO
+MISSING_DEPENDANCY_ERR = 3
+FILE_ERROR = 4
+DEPENDANCY_CHECK_ERROR = 7
+USER_CONFIG_ERROR = 8
+NO_SUCH_PROCESS_ERR = 12
+ROOT_PERMISSION_ERR = 22
+SYSTEMCTL_SERVICE_ERR = 98
+BASE_PSUTIL_ERROR = 99
 ##############################
 #Exit codes:
 #3-missnig grep
@@ -21,7 +32,6 @@ import configparser
 
 ##############################
 #Maybe add:
-# memory_used from systemctl show
 ##############################psutil children amount
 ##############################
 
@@ -53,7 +63,7 @@ import configparser
 def check_dependancies():
     """Checks for dependencies"""
     try:
-        if subprocess.call('/bin/fgrep > /dev/null 2>&1', shell=True) == 127:
+        if subprocess.call('/bin/grep -F > /dev/null 2>&1', shell=True) == 127:
             print("Missing dependancy: grep")
             sys.exit(3)
         if subprocess.call('/bin/systemctl > /dev/null 2>&1', shell=True) == 127:##!=0 ?
@@ -71,9 +81,9 @@ def read_config_file(filename):
     """Opens the file(required argument when running the program), reads the file, splits by newline and executes check_config() """
     try:
         with open(filename,'r') as file:
-            content=file.read().splitlines()
+            content = file.read().splitlines()
     except IOError:
-        print("Could not read file="+filename)        
+        print("Could not read file=" + filename)        
         sys.exit(4)
     return check_config(content)
 
@@ -81,16 +91,19 @@ def read_config_file(filename):
 def check_config(content):
     """checks if config contains valid service names with ||systemctl -- all --type service | fgrep PROCESSNAME||
     also appends .service if it's missing"""
-
-    valid_process_names=[]
+            ##izpolzvai sushtiq masiv, ne pravi nov
+    #ne splitvai
+    #endswith .service
+    valid_process_names = []
+    
     for process_name in content:
         process = process_name.split(".")
         process[0] += str(".service" )
-        command="systemctl --all --type service |fgrep \""+process[0]+"\" >/dev/null 2>&1"        
+        command="systemctl --all --type service |grep -F \""+process[0]+"\" >/dev/null 2>&1"     #    move up remove grep check process in all_processes
         try:
             output=subprocess.check_output([command], shell=True, stderr=subprocess.PIPE)
             if subprocess.call([command],shell=True)!=0:        #proverqva dali sushtestvuva takuv service, moje i direktno sus systemctl show komandata, no ne e tolkova sigurna(?)
-                print(process[0]+" does not exist")            ## delete later
+                print(process[0]+"does not exist")            ## delete later
                 sys.exit(8)                                    ## delete later
         except subprocess.CalledProcessError:
             print("Process "+process[0]+" does not exist")
@@ -104,27 +117,29 @@ def check_config(content):
 def get_service_info(processName):
 
     """Uses systemctl show to get PID, if no PID is available checks if service is loaded/inactive/not-found"""
-
-    command="systemctl show "+processName+" -p MainPID,ActiveState,SubState,LoadState"
+    
+    command = "systemctl show "+processName+" -p MainPID,ActiveState,SubState,LoadState"
     try:
-        output=subprocess.check_output([command], shell=True, stderr=subprocess.PIPE)       
+       ########## start_time=time.time() #########
+        output = subprocess.check_output([command], shell=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError:
         print("systemctl --all --type service error="+str(processName)+"!!!VERY BAD!!!") ##TODO:ne e user friendly
         exit(98)
+  ##################  print(time.time()-start_time) ######
 
     output = output.decode('utf-8')
     output = output.split('=')
-    PID=output[1].split('\n')
+    PID = output[1].split('\n')
     
-    parsable_output=[i.split('\n',1)[0] for i in output]       #formatirame lista, kato premahnem \n za po-lesen output
+    parsable_output = [i.split('\n',1)[0] for i in output]     #formatirame lista, kato premahnem \n za po-lesen output
     
     config.add_section(processName)                            ##nova sekciq v configParser s imeto na procesa
     
-    if(PID[0]!="0"):
-        config.set(processName,"main_PID",parsable_output[1])  #samo ako PID ne e 0 dobavqme key:main_PID
-    config.set(processName,"sub_state",parsable_output[3])
-    config.set(processName,"service_state",parsable_output[4])
-    config.set(processName,"load_state",parsable_output[2])
+    if(PID[0] != "0"):
+        config.set(processName,"main_PID",parsable_output[1])   #samo ako PID ne e 0 dobavqme key:main_PID
+    config.set(processName,"sub_state",parsable_output[3])      #
+    config.set(processName,"service_state",parsable_output[4])  #
+    config.set(processName,"load_state",parsable_output[2])     #
         
     return PID[0]              #vrushta PID na glavnata funkciq, izpolzva se za psutil.
 
@@ -135,18 +150,18 @@ def get_info_from_psutil(PID,processName):
     """Uses psutil to get status, CPU info, memory info, io info, amount of threads and CMDL that called the process"""
     
     try:
-        command="ps -p "+str(PID)+" -o etimes"                             ##etimes vrushta uptime v sekundi, etime ima format HH-MM-SS        
-        output=subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
-        config.set(processName,"uptime_seconds",output[7:-1].lstrip())     ##7:-1, premahva purvite 7 simvola (vinagi sa ELAPSED) i posledniq, koito vinagi e \n
+        command = "ps -p "+str(PID)+" -o etimes | tail -n1"                             ##etimes vrushta uptime v sekundi, etime ima format HH-MM-SS        
+        output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+        config.set(processName,"uptime_seconds",output.lstrip())     ##7:-1, premahva purvite 7 simvola (vinagi sa ELAPSED) i posledniq, koito vinagi e \n
         
-        p=psutil.Process(PID)
+        p = psutil.Process(PID) ##rename ti proc
 
         config.set(processName,"amount_of_children",str(len(p.children())))
-        config.set(processName,"cpu_0.45s_interval",str(p.cpu_percent(interval=0.45)))
+        config.set(processName,"cpu_usage_percent",str(p.cpu_percent(interval=0.45)))
         config.set(processName,"command_line",' '.join(p.cmdline()))
         config.set(processName,"amount_of_threads",str(p.num_threads()))
         
-        memInfo=p.memory_full_info()
+        memInfo = p.memory_full_info() # snakecase
         
         config.set(processName,"memory_rrs_percent",str(p.memory_percent(memtype="rss")))
         config.set(processName,"memory_rss_bytes",str(memInfo.rss))
@@ -154,7 +169,7 @@ def get_info_from_psutil(PID,processName):
         config.set(processName,"memory_shared_bytes",str(memInfo.shared))
         config.set(processName,"memory_swap_bytes",str(memInfo.swap))
 
-        IOinfo=p.io_counters()                          ##needs root
+        IOinfo = p.io_counters()  #snakecase                        ##needs root
         
         config.set(processName,"io_read_count",str(IOinfo.read_count))
         config.set(processName,"io_write_count",str(IOinfo.write_count))
@@ -177,15 +192,22 @@ def config_print(config):
 def main():
     check_dependancies()                             ##checks if systemctl, fgrep, ps exist     
     parser = argparse.ArgumentParser(description='Get information about systemd processes') ##gets argument(filename)
-    parser.add_argument('filename', type=str)
+    parser.add_argument('filename', type=str,help="file that contains services")
     args = parser.parse_args()
 
-    for process in read_config_file(args.filename):
-        print("\n["+process+"]")            
-        PID=get_service_info(process)                 ##getPID vrushta PID na procesa izpolzvaiki systemctl show
-        if(PID!="0"):
-            get_info_from_psutil(int(PID),process)
-        config_print(config)
+    for process in read_config_file(args.filename):        
+        PID = get_service_info(process)                 ##getPID vrushta PID na procesa izpolzvaiki systemctl show
+        if(PID != "0"):
+            get_info_from_psutil(int(PID),process) ## 2 dicts
+    config_print(config)
             
-config=configparser.ConfigParser()        
-main()
+config=configparser.ConfigParser()
+# config[process_name] = ordereddict( from collections \todo\
+    #amount_of_children = ....,
+    #key = value,
+    #key2 = value4)##otgore i s glavni
+try:
+    main()
+except:
+    print("very bad")
+    sys.exit(96)
