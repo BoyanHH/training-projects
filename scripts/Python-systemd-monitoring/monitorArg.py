@@ -1,8 +1,10 @@
 import psutil
 import subprocess
 import os
-import argparse                                                                                  
-from subprocess import PIPE 
+import argparse
+import sys
+import configparser
+
 ##############################
 #Exit codes:
 #3-missnig grep
@@ -11,108 +13,137 @@ from subprocess import PIPE
 #4-unable to read file(argument)-IOERROR
 #7-unable to check for dependencies-subprocess.CalledProcessError
 #99-base psutil exception-pstuil.Error
-#
+#11,12-process does not exist(user config file error)
 ##############################
 
 ##############################
 #Maybe add:
-## print("Uptime_seconds= "+str(p.create_time())) # The process creation time as a floating point number expressed in seconds since the epoch, in UTC. The return value is cached after first call.
-## threads()    #Return threads opened by process as a list of named tuples including thread id and thread CPU times (user/system). On OpenBSD this method requires root privileges.
-## connections(kind="inet") #Return socket connections opened by process as a list of named tuples. To get system-wide connections use psutil.net_connections(). Every named tuple provides 6 attributes:
-# loadState from systemctl show
-#
+# memory_used from systemctl show
+# psutil children amount
 ##############################
 
-##############################
+##############################//////////////
 #TODO:
-#Ln 80
+#   print format new style
+################################## sys.exit instead of exit
+# getPID rename and return all
+# return dictionary at getPSUTILINFO
 #
-#
+##for key, value in process_info.items():
+#   https://docs.python.org/3/library/configparser.html
+##################################add .service kogato go nqma v imeto pri print
+##################################malki bukvi, _
+##################################amount of child processes
+##################################rename get_process_names = parse_config_file and check if services are valid
+##################################loadState from systemctl show
+##################################//////////////////
+
 ##############################
+#TO ASK:
+# https://stackoverflow.com/questions/36103448/convert-from-unix-timestamp-with-milliseconds-to-hhmmss-in-python vmesto ps -o etimes
+#
+#
+#
+#
+#############################
 
 
-def checkDependancies():
+def check_dependancies():
     """Checks for dependencies"""
     try:
-        if subprocess.call('grep > /dev/null 2>&1', shell=True)==127:
+        if subprocess.call('/bin/grep > /dev/null 2>&1', shell=True) == 127:
             print("Missing dependancy: grep")
-            exit(3)
-        if subprocess.call('systemctl > /dev/null 2>&1', shell=True)==127:##!=0 ?
+            sys.exit(3)
+        if subprocess.call('/bin/systemctl > /dev/null 2>&1', shell=True) == 127:##!=0 ?
             print("Missing dependancy: systemctl")
-            exit(2)
-        if subprocess.call('ps -p 1 -o etimes > /dev/null 2>&1', shell=True)==127:##!=0 ?
+            sys.exit(2)
+        if subprocess.call('/bin/ps -p 1 -o etimes > /dev/null 2>&1', shell=True) == 127:##!=0 ?
             print("Missing dependancy: ps")
-            exit(6)        
+            sys.exit(6)        
     except subprocess.CalledProcessError:
         print("Unable to check for dependencies")
-        exit(7)
+        sys.exit(7)
 
 
-def getProcessNames(filename):
-    """Opens the file(that is an argument when running the program), reads the file, and splits by newline """
+def read_config_file(filename):
+    """Opens the file(required argument when running the program), reads the file, splits by newline and executes check_config() """
     try:
-        num_lines = sum(1 for line in open(filename))           ##moje i readlines(), no tova raboti sushto
         with open(filename,'r') as file:
-            content=file.read()
+            content=file.read().splitlines()
     except IOError:
-        print("Could not read file: "+str(filename))        
-        exit(4)
-    finally:
-        file.close()
-    processNames=content.split('\n')
-    return processNames
+        print("Could not read file="+filename)        
+        sys.exit(4)
+    return check_config(content)
     
+def check_config(content):
+    """checks if config contains valid service names with ||systemctl -- all --type service | fgrep PROCESSNAME||
+    also appends .service if its missing"""
 
-def getPID(processName):
+    valid_process_names=[]
+    for process_name in content:
+        process = process_name.split(".")
+        print(process[0])
+        process[0] += str(".service" )
+        command="systemctl --all --type service |fgrep \""+process[0]+"\" >/dev/null 2>&1"        
+        try:
+            output=subprocess.check_output([command], shell=True, stderr=subprocess.PIPE)
+            if subprocess.call([command],shell=True)!=0:        #proverqva dali sushtestvuva takuv service, moje i direktno sus systemctl show komandata, no ne e tolkova sigurna(?)
+                print(process[0]+" does not exist")            ## delete later
+                sys.exit(11)                                    ## delete later
+        except subprocess.CalledProcessError:
+            print("Process "+process[0]+" does not exist")
+            sys.exit(12);
+        valid_process_names.append(process[0])
+        
+    return valid_process_names
+
+def get_service_info(processName):
+    #service_output={}
+    config=configparser.ConfigParser()
     """Uses systemctl show to get PID, if no PID is available checks if service is loaded/inactive/not-found"""
 
-    command="systemctl show "+processName+" -p MainPID,TasksCurrent,ActiveState,SubState"
+    command="systemctl show "+processName+" -p MainPID,ActiveState,SubState,LoadState"
     try:
-        output=subprocess.check_output([command], shell=True, stderr=PIPE)
-        command="systemctl --all --type service |grep \""+processName+"\" >/dev/null 2>&1"        
-        if subprocess.call([command],shell=True)!=0:        #proverqva dali sushtestvuva takuv service, moje i direktno sus systemctl show komandata, no ne e tolkova sigurna(?)
-            print("Process "+processName+" does not exist")
-            return False;  
+        output=subprocess.check_output([command], shell=True, stderr=subprocess.PIPE)       
     except subprocess.CalledProcessError:
-        print("Process does not exist-systemctl --all --type service error="+str(processName)) ##TODO:ne e user friendly
-        return False;
+        print("systemctl --all --type service error="+str(processName)+"!!!VERY BAD!!!") ##TODO:ne e user friendly
+        return 0;
 
-    output=output.split("=")
+    output = output.decode('utf-8')
+    output = output.split('=')
     PID=output[1].split('\n')
-    zugzug=[i.split('\n',1)[0] for i in output]       #formatirame lista, kato premahnem \n za po-lesen output
-    if(PID[0]=="0"):                                  #ako PID e 0, ili ne sushtestvuva izobshto ili ne e active
-        if(zugzug[3]=="active"):
-            print("process_state="+zugzug[3])
-            print("sub_state="+zugzug[4]+"")
-            return False;
-        print("process_state="+zugzug[3])
-        print("sub_state="+zugzug[4]+"")
-        return False;
 
-    print("main_PID="+zugzug[1])
-    print("amount_of_child_processes="+zugzug[2])
-    print("process_state="+zugzug[3])
-    print("sub_state="+zugzug[4]+"")
+    parsable_output=[i.split('\n',1)[0] for i in output]       #formatirame lista, kato premahnem \n za po-lesen output
 
-    return PID[0]                       #vrushta PID na glavnata funkciq
+    if(PID[0]!="0"):
+        print("main_PID="+parsable_output[1]) ##samo ako PID e razlichno 0 da go printira v output
+    print("service_state="+parsable_output[4])
+    print("sub_state="+parsable_output[3])
+    print("load_state="+parsable_output[2])
+    config.add_section(processName)
+    config.set(processName,"main_PID",str(parsable_output[1]))
+    config.set(processName,"service_state",str(parsable_output[4]))
+    
+    return PID[0], config                      #vrushta PID na glavnata funkciq
 
+def get_info_from_psutil(PID):
 
-def getPSUTILinfo(PID):
     """Uses psutil to get status, CPU info, memory info, io info, amount of threads and CMDL that called the process"""
 
     try:
         command="ps -p "+str(PID)+" -o etimes"             ##etimes vrushta uptime v sekundi, etime ima format HH-MM-SS        
-        output=subprocess.check_output([command],shell=True, stderr=PIPE)
+        output=subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
         print("uptime_seconds="+output[7:].lstrip())       ##7: to remove ELAPSED from the string
 
         p=psutil.Process(PID)
 
+        print("Amount_of_children=",len(p.children()))        
         print("cpu_0.45s_interval="+str(p.cpu_percent(interval=0.45)))
-        print("command_line_that_called_process="+' '.join(p.cmdline()))
+        print("command_line="+' '.join(p.cmdline()))
 
-        print("memory_%_used="+str(p.memory_percent()))
         memInfo=p.memory_full_info()
-        print("memory_rss="+str(memInfo.rss)+"\nmemory_vms="+str(memInfo.vms)+"\nmemory_shared="+str(memInfo.shared)+"\nmemory_swap="+str(memInfo.swap))
+        print("memory_rrs_percent="+str(p.memory_percent(memtype="rss")))
+        print("memory_rss_bytes="+str(memInfo.rss)+"\nmemory_vms_bytes="+str(memInfo.vms)+"\nmemory_shared_bytes="+str(memInfo.shared)+"\nmemory_swap_bytes="+str(memInfo.swap))
         
         IOinfo=p.io_counters()  
         print("io_read_count="+str(IOinfo.read_count)+"\nio_write_count="+str(IOinfo.write_count)+"\nio_read_bytes="+str(IOinfo.read_bytes)+"\nio_write_bytes="+str(IOinfo.write_bytes))
@@ -121,32 +152,28 @@ def getPSUTILinfo(PID):
         
     except psutil.AccessDenied:
         print("Need root access(psutil) for process PID="+str(PID))
+        #sys.exit(22)
     except psutil.NoSuchProcess:
         print("No process found with PID="+str(PID))
+        #sys.exit(12)
     except psutil.Error:
-        print("Base psutil exception")
-        exit(99)
+        print("Base psutil exception\\\\\\\\very bad\\\\\\\\\\")            #TODO: something
+        sys.exit(99)
 
-##----------------START--------------------
-        
-checkDependancies()                             ##checks if systemctl and grep exist     
-parser=argparse.ArgumentParser(description='Get information about systemd processes') ##gets argument(filename)
-parser.add_argument('filename')
-args=parser.parse_args()
-processNames=getProcessNames(args.filename)     ##reads the file and returns an array of the process names
-processNumber=0 
-
-while processNumber<len(processNames)-1:        ##cikul, koito minava prez masiva s imena na procesi
-    PID=False
-    while(PID==False):                          ##PID vrushta false ako procesa ne e aktiven(nqma MainPID)
-        processName=processNames[processNumber]
-        if(processName==""):                    ##Ako procesa e ""-null-posledniq proces-nevaliden input
-            exit("No more processes")
-        print("\n["+processName+"]")            ##printira imeto na procesa
-        PID=getPID(processName)                 ##getPID vrushta PID na procesa izpolzvaiki systemctl show
-        if(PID==False):
-            processNumber+=1                    ##PID vrushta false ako procesa ne e aktiven(nqma MainPID)
+def config_print(config):
+    config.write(sys.stdout)                   ##shte printira sus space, za chetimost |dobavq se ,Fals|etu-
     
-    if(PID!=False):
-        getPSUTILinfo(int(PID))
-        processNumber+=1
+def main():
+    check_dependancies()                             ##checks if systemctl and grep exist     
+    parser = argparse.ArgumentParser(description='Get information about systemd processes') ##gets argument(filename)
+    parser.add_argument('filename', type=str)
+    args = parser.parse_args()processName
+
+    for process in read_config_file(args.filename):
+        print("\n["+process+"]")            
+        PID=get_service_info(process)                 ##getPID vrushta PID na procesa izpolzvaiki systemctl show
+        if(PID[0]!="0"):
+            get_info_from_psutil(int(PID[0]))
+            config_print(PID[1])
+        
+main()

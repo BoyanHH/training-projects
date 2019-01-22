@@ -2,9 +2,15 @@ apache2
 cron.service
 atftpd.service
 console-setup.service
+abrakadabr
+bluetooth.service
 nginx.service
 kbd.service
-apache2.ser
-apache2.
 certbot.service
+!@!@!@!@!
+
+
+-----
+o.service 
+rm /root/hello.txt
 festival
