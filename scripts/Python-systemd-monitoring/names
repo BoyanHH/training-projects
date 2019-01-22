@@ -4,7 +4,5 @@ atftpd.service
 console-setup.service
 nginx.service
 kbd.service
-apache2.ser
-apache2.
 certbot.service
 festival
