@@ -4,6 +4,7 @@ import os
 import argparse
 import sys
 import configparser
+from collections import OrderedDict
 
 MISSING_DEPENDENCY_ERR = 3
 FILE_IO_ERROR = 4
@@ -69,7 +70,7 @@ def check_config(content):
         if process[0] in output:
             valid_process_names.append(process[0])
         else:
-           print("No such process")
+           print("No such process "+str(process[0]))
            exit(NO_SUCH_PROCESS_ERR)
            
     return valid_process_names
@@ -90,13 +91,13 @@ def get_service_info(processName):
     PID = output[1].split('\n')
     
     parsable_output = [i.split('\n',1)[0] for i in output]     #formatirame lista, kato premahnem \n za po-lesen output
-    
-    service_info_dict={
-            "main_PID":parsable_output[1],
-            "sub_state":parsable_output[3],
-            "service_state":parsable_output[4],
-            "load_state":parsable_output[2]
-        }
+
+    service_info_dict=OrderedDict([
+            ("main_PID",parsable_output[1]),
+            ("sub_state",parsable_output[3]),
+            ("service_state",parsable_output[4]),
+            ("load_state",parsable_output[2])])
+            
 
 
     return service_info_dict              
@@ -113,23 +114,22 @@ def get_info_from_psutil(PID,processName):
         proc = psutil.Process(PID)
         memory_info = proc.memory_full_info() 
         io_info = proc.io_counters()                          ##needs root
-        
-        info_from_psutil_dict={
-            "amount_of_children":str(len(proc.children())),
-            "cpu_usage_percent":str(proc.cpu_percent(interval=0.45)),
-            "command_line":' '.join(proc.cmdline()),
-            "amount_of_threads":str(proc.num_threads()),
-            "uptime_seconds":output[0:-1].lstrip(),
-            "memory_rrs_percent":str(proc.memory_percent(memtype="rss")),
-            "memory_rss_bytes":str(memory_info.rss),
-            "nmemory_vms_bytes":str(memory_info.vms),
-            "memory_shared_bytes":str(memory_info.shared),
-            "memory_swap_bytes":str(memory_info.swap),
-            "io_read_count":str(io_info.read_count),
-            "io_write_count":str(io_info.write_count),
-            "io_read_bytes":str(io_info.read_bytes),
-            "io_write_bytes":str(io_info.write_bytes)
-        }
+
+        info_from_psutil_dict = OrderedDict([
+            ("amount_of_children",str(len(proc.children()))),
+            ("cpu_usage_percent",str(proc.cpu_percent(interval=0.45))),
+            ("command_line",' '.join(proc.cmdline())),
+            ("amount_of_threads",str(proc.num_threads())),
+            ("uptime_seconds",output[0:-1].lstrip()),
+            ("memory_rrs_percent",str(proc.memory_percent(memtype="rss"))),
+            ("memory_rss_bytes",str(memory_info.rss)),
+            ("nmemory_vms_bytes",str(memory_info.vms)),
+            ("memory_shared_bytes",str(memory_info.shared)),
+            ("memory_swap_bytes",str(memory_info.swap)),
+            ("io_read_count",str(io_info.read_count)),
+            ("io_write_count",str(io_info.write_count)),
+            ("io_read_bytes",str(io_info.read_bytes)),
+            ("io_write_bytes",str(io_info.write_bytes))])
         
     except psutil.AccessDenied:
         print("Need root access(psutil) for process PID="+str(PID))
@@ -177,9 +177,8 @@ def main():
     args = parser.parse_args()
     
     for process in read_config_file(args.filename):
-        config=configparser.ConfigParser()
-        config.add_section(process)
-        info_from_psuitl_dict = {}
+        config = configparser.ConfigParser()
+        config.add_section(process)        
 
         service_info_dict = get_service_info(process)##getPID vrushta PID na procesa izpolzvaiki systemctl show
         
@@ -189,8 +188,8 @@ def main():
         config_build(config,service_info_dict,info_from_psutil_dict)
         config_print(config)
             
-try:
-    main()
-except:
-    print("very bad")
-    sys.exit(96)
+#try:
+main()
+#except:
+    #print("very bad")
+    #sys.exit(96)
