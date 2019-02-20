@@ -217,10 +217,10 @@ def main(config,database):
 
     check_dependencies()
 
-    if(config["DEFAULT"]["backup_name"]=="date.sql"):
+    if(config["DEFAULT"]["backup_name"]=="~date~.sql"):
         backup_name     = datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
 
-    elif(config["DEFAULT"]["backup_name"]=="dbname-date.sql"):
+    elif(config["DEFAULT"]["backup_name"]=="~dbname-date~.sql"):
         backup_name=database+"-"
         backup_name     += datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
 
