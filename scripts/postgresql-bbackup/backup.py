@@ -4,10 +4,6 @@ import sys
 import psutil
 import datetime
 
-
-#TODO: add error codes, fix names
-#password?
-
 def check_dependencies():
     """Checks for dependencies
        Mandatory dependencies are - pg_dump,psql,find,mkdir
@@ -37,21 +33,21 @@ def check_dependencies():
 
     except subprocess.CalledProcessError:
         sys.stderr.write(" Unable to check for dependencies")
-        sys.exit(1)        #fix exit code
+        sys.exit(1)        
 
         
 def check_if_db_exists(db_name,db_user): 
-    command="/usr/bin/psql template1 -U "+db_user+" -c \"SELECT 1 AS result FROM pg_database WHERE datname='"+db_name+"'\""
-    #ako e s parola -psqlrc ako e bez parola dase logva #??ask
+    command="/usr/bin/psql template1  -U "+db_user+" -c \"SELECT 1 AS result FROM pg_database WHERE datname='"+db_name+"'\""
+        
     try:
          output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
          output = output.lstrip()
     except subprocess.CalledProcessError:
-        sys.stderr.write(" Error accessing database "+str(db_name))
+        sys.stderr.write(" Error accessing database: "+str(db_name)+". User or database does not exist\n")
         sys.exit(1)              
     if "1" not in output:
-        sys.stderr.write("Database does not exist. "+str(db_name))
-        sys.exit(1)            #exit code fix later
+        sys.stderr.write(" Database does not exist: "+str(db_name)+ "\n")
+        sys.exit(1)            
 
 
 def check_directories(backup_dir_daily,backup_dir_weekly,backup_dir_monthly):
@@ -59,9 +55,9 @@ def check_directories(backup_dir_daily,backup_dir_weekly,backup_dir_monthly):
         command="/bin/mkdir -p "
         
         if not os.access(backup_dir_daily, os.W_OK):
-            sys.stderr.write("Cannot write to daily backupdir/directory does not exist.\n "+backup_dir_daily)
+            sys.stderr.write(" Cannot write to daily backupdir OR directory does not exist.\n "+backup_dir_daily)
             try:
-                 print("Attempting to create directory")
+                 print(" Attempting to create daily directory... ")
                  daily_command=command+backup_dir_daily              
                  output = subprocess.check_output([daily_command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
 
@@ -72,7 +68,7 @@ def check_directories(backup_dir_daily,backup_dir_weekly,backup_dir_monthly):
         
         if not os.access(backup_dir_weekly, os.W_OK):
           try:
-                 print("Attempting to create directory")
+                 print(" Attempting to create weekly directory... ")
                  weekly_command=command+backup_dir_weekly
                  output = subprocess.check_output([weekly_command],shell=True, stderr=subprocess.PIPE).decode('utf-8')                  
 
@@ -82,7 +78,7 @@ def check_directories(backup_dir_daily,backup_dir_weekly,backup_dir_monthly):
             
         if not os.access(backup_dir_monthly, os.W_OK):
             try:
-                 print("Attempting to create directory")
+                 print(" Attempting to create monthly directory... ")
                  monthly_command=command+backup_dir_monthly
                  output = subprocess.check_output([monthly_command],shell=True, stderr=subprocess.PIPE).decode('utf-8')                  
             except subprocess.CalledProcessError:
@@ -104,44 +100,53 @@ def type_of_backup(weekly_backup_day,monthly_backup_date):
     return "daily"
 
 
-def daily_backup_procedure(backup_dir_daily,days_expire_daily,db_name,backup_name):
+def daily_backup_procedure(backup_dir_daily,days_expire_daily,db_name,backup_name,db_user,pg_dump_cmd):
     command="/usr/bin/find "+backup_dir_daily+" -maxdepth 1 -type f -name \"*.sql*\" -mtime +"+days_expire_daily
     try:
              output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-            sys.stderr.write(" Failed to remove old daily backups")
+            sys.stderr.write(" Failed to remove old daily backups ")
             sys.exit(1)              
     output_formatted=output.split('\n')
 
+    
     try:
         for old_file in output_formatted[:-1]:
             os.remove(old_file)
             
     except IsADirectoryError:
-        sys.stderr.write("File is a directory(unable to remove)="+old_file)
+        sys.stderr.write(" File is a directory(unable to remove)= "+old_file)
     except FileNotFoundError:
-        sys.stderr.write("File not found="+old_file)
-    if not gzip_enabled!="yes":    
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" | /bin/gzip > "+backup_dir_daily+"/"+backup_name
-    else:
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" > "+backup_dir_daily+""+backup_name
-        print(command)
-
+        sys.stderr.write(" File not found= "+old_file)
+        
     try:
-         output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+         err_check=pg_dump_cmd+" 2>/dev/null 1>2"
+         output = subprocess.check_output([err_check],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-        sys.stderr.write(" Failed to do daily backup")
+        sys.stderr.write(" Failed to do daily backup \n")
         sys.exit(1)              #exit code fix later
 
-    print("Successfull daily backup")
+    if not gzip_enabled!="yes":    
+        pg_dump_cmd+="| /bin/gzip > "+backup_dir_daily+"/"+backup_name
+
+    else:
+        pg_dump_cmd+=" > "+backup_dir_daily+""+backup_name
+
+
+    try:
+         output = subprocess.check_output([pg_dump_cmd],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+    except subprocess.CalledProcessError:
+        sys.stderr.write(" Failed to do daily backup \n")
+        sys.exit(1)              #exit code fix later
+    print(" Successfull daily backup \n")
     return 0
 
-def weekly_backup_procedure(backup_dir_weekly,days_expire_weekly,db_name,backup_name):
+def weekly_backup_procedure(backup_dir_weekly,days_expire_weekly,db_name,backup_name,pg_dump_cmd):
     command="/usr/bin/find "+backup_dir_weekly+" -maxdepth 1 -type f -name \"*.sql*\" -mtime +"+days_expire_weekly
     try:
              output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-            sys.stderr.write(" Failed to remove old weekly backups")
+            sys.stderr.write(" Failed to remove old weekly backups \n")
             sys.exit(1)  #exit code fix later
 
     output_formatted=output.split('\n')
@@ -150,30 +155,32 @@ def weekly_backup_procedure(backup_dir_weekly,days_expire_weekly,db_name,backup_
             os.remove(old_file)
             
     except IsADirectoryError:
-        sys.stderr.write("File is a directory(unable to remove)="+old_file)
+        sys.stderr.write(" File is a directory(unable to remove)="+old_file)
     except FileNotFoundError:
-        sys.stderr.write("File not found="+old_file)
-    if not gzip_enabled!="yes":    
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" | /bin/gzip > "+backup_dir_weekly+"/"+backup_name
-    else:
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" > "+backup_dir_weekly+""+backup_name
-        print(command)
+        sys.stderr.write(" File not found="+old_file)
+
     try:
-         output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+         output = subprocess.check_output([pg_dump_cmd],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-        sys.stderr.write(" Failed to do weekly backup")
-        sys.exit(1)              #exit code fix later
+        sys.stderr.write(" Failed to do weekly backup\n")
+        sys.exit(1) 
+
+    if not gzip_enabled!="yes":    
+        pg_dump_cmd+="| /bin/gzip > "+backup_dir_weekly+"/"+backup_name
+
+    else:
+        pg_dump_cmd+=" > "+backup_dir_weekly+""+backup_name
 
     print("Successfull weekly backup at "+backup_dir_weekly)
     return 0
 
 
-def monthly_backup_procedure(backup_dir_monthly,days_expire_monthly,db_name,backup_name):
+def monthly_backup_procedure(backup_dir_monthly,days_expire_monthly,db_name,backup_name,pg_dump_cmd):
     command="/usr/bin/find "+backup_dir_monthly+" -maxdepth 1 -type f -name \"*.sql*\" -mtime +"+days_expire_monthly
     try:
-             output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+             output = subprocess.check_output([pg_dump_cmd],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-            sys.stderr.write(" Failed to remove old monthly backups")
+            sys.stderr.write(" Failed to remove old monthly backups\n")
             sys.exit(1)  #exit code fix later
 
     output_formatted=output.split('\n')
@@ -185,16 +192,27 @@ def monthly_backup_procedure(backup_dir_monthly,days_expire_monthly,db_name,back
         sys.stderr.write("File is a directory(unable to remove)="+old_file)
     except FileNotFoundError:
         sys.stderr.write("File not found="+old_file)
-    if not gzip_enabled!="yes":    
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" | /bin/gzip > "+backup_dir_monthly+"/"+backup_name
-    else:
-        command="/usr/bin/pg_dump -Fp -U postgres "+db_name+" > "+backup_dir_monthly+""+backup_name
+
     try:
-         output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+         output = subprocess.check_output([pg_dump_cmd],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-        sys.stderr.write(" Failed to do weekly backup")
+        sys.stderr.write(" Failed to do daily backup \n")
         sys.exit(1)              #exit code fix later
-    print("Successfull monthly backup")
+
+
+    if not gzip_enabled!="yes":    
+        pg_dump_cmd="| /bin/gzip > "+backup_dir_monthly+"/"+backup_name
+            
+
+    else:
+        pg_dump_cmd+="> "+backup_dir_monthly+""+backup_name                
+        
+    try:
+         output = subprocess.check_output([pg_dump_cmd],shell=True, stderr=subprocess.PIPE).decode('utf-8')
+    except subprocess.CalledProcessError:
+        sys.stderr.write(" Failed to do weekly backup\n")
+        sys.exit(1)              
+    print("Successfull monthly backup\n")
     return 0
 
 def get_hostname():
@@ -202,12 +220,14 @@ def get_hostname():
     try:
             output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
     except subprocess.CalledProcessError:
-            sys.stderr.write(" Failed to aquire hostname from command:"+command)
+            sys.stderr.write(" Failed to aquire hostname from command:  "+command)
             sys.exit(1)              
     return output[:-1]
     
 def main(config,database):
-    hostname=get_hostname()
+    
+    hostname = get_hostname()
+    
     backup_dir_daily = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/"
     backup_dir_weekly = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/weekly/"
     backup_dir_monthly = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/monthly/"
@@ -215,38 +235,45 @@ def main(config,database):
     global gzip_enabled
     gzip_enabled = config["DEFAULT"]["gzip_enabled"]
 
-    check_dependencies()
+    if(config["DEFAULT"]["interactive"]=="yes"):
+        pg_dump_cmd = "/usr/bin/pg_dump -Fp -W -U "+config["DEFAULT"]["db_user"]+" "+database+" "
+    else:
+        pg_dump_cmd = "/usr/bin/pg_dump -Fp -w -U "+config["DEFAULT"]["db_user"]+" "+database+" "
 
+
+    check_dependencies()
+    check_if_db_exists(database,config["DEFAULT"]["db_user"])
     if(config["DEFAULT"]["backup_name"]=="~date~.sql"):
-        backup_name     = datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
+        backup_name = datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
 
     elif(config["DEFAULT"]["backup_name"]=="~dbname-date~.sql"):
-        backup_name=database+"-"
-        backup_name     += datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
+        backup_name = database+"-"
+        backup_name += datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"
 
     else:
         backup_name = config["DEFAULT"]["backup_name"]
         if not (backup_name.endswith(".sql")):
-                backup_name+=".sql"
+                backup_name += ".sql"
 
-    if not gzip_enabled!="yes":
+    if not gzip_enabled != "yes":
       if not (backup_name.endswith(".gz")):
-        backup_name+=".gz"
+        backup_name += ".gz"
+        
+    db_user = config["DEFAULT"]["db_user"]
     
-    check_if_db_exists(database,config["DEFAULT"]["db_user"])  
     check_directories(backup_dir_daily,backup_dir_weekly,backup_dir_monthly)
     backup_type = type_of_backup(config["DEFAULT"]["weekly_backup_day"],config["DEFAULT"]["monthly_backup_date"])
     
     if backup_type == "daily":
-        daily_backup_procedure(backup_dir_daily,config["DEFAULT"]["days_expire_daily"],database,backup_name)
+        daily_backup_procedure(backup_dir_daily,config["DEFAULT"]["days_expire_daily"],database,backup_name,config["DEFAULT"]["db_user"],pg_dump_cmd)
         return 0
 
     if backup_type == "weekly":
-        weekly_backup_procedure(backup_dir_weekly,config["DEFAULT"]["days_expire_weekly"],database,backup_name)
+        weekly_backup_procedure(backup_dir_weekly,config["DEFAULT"]["days_expire_weekly"],database,backup_name,config["DEFAULT"]["db_user"],pg_dump_cmd)
         return 0
         
     else:
-        monthly_backup_procedure(backup_dir_monthly,config["DEFAULT"]["days_expire_monthly"],database,backup_name)
+        monthly_backup_procedure(backup_dir_monthly,config["DEFAULT"]["days_expire_monthly"],database,backup_name,config["DEFAULT"]["db_user"],pg_dump_cmd)
         return 0
         
             
@@ -254,5 +281,5 @@ def main(config,database):
 if __name__ == '__main__':
     main()
 #except:
- #   sys.stderr.write(" Main exception")
- #   sys.exit(-1)
+#   sys.stderr.write(" Main exception")
+#   sys.exit(-1)
