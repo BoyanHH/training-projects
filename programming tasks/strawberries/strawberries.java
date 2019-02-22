@@ -4,6 +4,13 @@ public class strawberries {
         int K=100 ;// reda
         int L=100;//stulba
         int R=60;// dni
+        if(R<>0||R>100) {
+        	System.out.println("Nevaliden input(R)")
+        }
+        if(0>K||0>L||K>L||K>1000||L>1000) {
+        	System.out.println("Nevaliden input(K/L)")
+        	
+        }
         int currentDay=0;
         int[][] strawberries= new int[K][L];
         int badL=0;

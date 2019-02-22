@@ -1,14 +1,23 @@
-
-public class segments {
+public class segmentss {
   public static void main(String[] args){
       //statichno zadadeni za po-lesno testvane
+  //Ogranicheniq:      n, a, b и c са целите положителни числа < 100 000.
       int n=20;
       int a=3;
       int b=2;
       int c=3;
+      int limit=99999;
+      if(limit>n||limit>a||limit>b||limit>c){
+      System.out.println("Nevalidni vhodni danni")
+      return 0;
+      }
       int temp=0;
       int adots[] = new int[8];
       int bdots[] = new int[11];
+      int draw[] = new int[20];
+      for(int i=0;i<draw.length;i++) {
+    	  draw[i]=0;
+      }
       //suzdavame masiva ot tochki a
       adots[0]=0;
       bdots[0]=0;
@@ -26,22 +35,55 @@ public class segments {
       }
       //ot cqloto razstoqnie n vadim razstoqnieto, koeto ne e zaeto ot cherveni linii
       for(int i=0;adots.length>i;i++){
-               for(int j=0;bdots.length>j;j++){
+
+               for(int j=0;bdots.length>j;j++){            	   
                   // System.out.println("pairs are "+ adots[i] + " " + bdots[j]); #TESTING PURPOSES
                    if(adots[i]>bdots[j]){
                        if(adots[i]-bdots[j]==c){
                            System.out.println("Proverka uspeshna =" + adots[i] + " - " +bdots[j]);
-                       n-=c;
-                       }
+                            n-=c;
+                            if(adots[i]>bdots[j]) {
+                            for(int s=bdots[j];s<=adots[i];s++) {
+                            	System.out.println("in");
+                          	  draw[s]=1;
+                            }
+                            }
+                            else {
+                            	 for(int s=adots[i];s<bdots[j];s++) {
+                                 	System.out.println("in");
+
+                               	  draw[s]=1;
+                                 }
+                            }
+                            }
+                       
                    }
                    if(bdots[j]>adots[i]){
                        if(bdots[j]-adots[i]==c){
                                                       System.out.println("Proverka uspeshna =" + bdots[j] + " - " +adots[i]);
-                           n-=c;
+                    	   n-=c;
+                    	   if(adots[i]>bdots[j]) {
+                               for(int s=bdots[j];s<=adots[i];s++) {
+                               	System.out.println("in");
+                             	  draw[s]=1;
+                               }
+                               }
+                               else {
+                               	 for(int s=adots[i];s<bdots[j];s++) {
+                                    	System.out.println("in");
+
+                                  	  draw[s]=1;
+                                    }
+                               }
                        }
                    }
+               
                }
       }
-      System.out.println("Answer "+n);
+      System.out.println("");
+      for(int i=0;i<draw.length;i++) {
+    	 System.out.print(draw[i]);
+      }
+      System.out.println("\nAnswer "+n);
   }  
 }
