@@ -4,7 +4,6 @@ import sys
 import psutil
 import datetime
 
-
 def check_dependencies():
     """Checks for dependencies
        Mandatory dependencies are - pg_dump,psql,find,mkdir
@@ -37,18 +36,18 @@ def check_dependencies():
         sys.exit(1)        
 
         
-def check_if_db_exists(db_name,db_user):
+def check_if_db_exists(db_name,db_user,ip,port):
     
-    command="/usr/bin/psql template1  -U "+db_user+" -c \"SELECT 1 AS result FROM pg_database WHERE datname='"+db_name+"'\""    
+    command="/usr/bin/psql template1 -h "+ip+" -p "+port+" -U "+db_user+" -c \"SELECT 1 AS result FROM pg_database WHERE datname='"+db_name+"'\""    
 
     try:
          output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
          output = output.lstrip()
     except subprocess.CalledProcessError:
-        sys.stderr.write("ERROR:Unable to access database: "+str(db_name)+". User or database does not exist\n")
+        sys.stderr.write("ERROR:Unable to access remote database: "+str(db_name)+". User or database does not exist\n")
         sys.exit(1)              
     if "1" not in output:
-        sys.stderr.write("ERROR:Database does not exist: "+str(db_name)+ "\n")
+        sys.stderr.write("ERROR:Remote Database does not exist: "+str(db_name)+ "\n")
         sys.exit(1)            
 
 
@@ -201,18 +200,10 @@ def monthly_backup_procedure(backup_dir_monthly,days_expire_monthly,db_name,back
     return 0
 
 
-def get_hostname():
-    command="/bin/hostname"
-    try:
-            output = subprocess.check_output([command],shell=True, stderr=subprocess.PIPE).decode('utf-8')
-    except subprocess.CalledProcessError:
-            sys.stderr.write(" Failed to aquire hostname from command:  "+command)
-            sys.exit(1)              
-    return output[:-1]
-    
+
 def main(config,database):
     #try:
-        hostname = get_hostname()    
+        hostname = config["DEFAULT"]["remote_ip"]  
         backup_dir_daily = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/daily"
         backup_dir_weekly = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/weekly/"
         backup_dir_monthly = config["DEFAULT"]["backup_dir"]+hostname+"/"+database+"/monthly/"
@@ -225,12 +216,15 @@ def main(config,database):
         else:
             pg_dump_cmd = "/usr/bin/pg_dump -Fp -w -U "+config["DEFAULT"]["db_user"]+" "
 
+        if(config["DEFAULT"]["remote"]=="yes"):
+            pg_dump_cmd+=" -h "+config["DEFAULT"]["remote_ip"]+" -p "+config["DEFAULT"]["remote_port"]+" "
+
         pg_dump_cmd+=database+" "
 
 
         check_dependencies()
         
-        check_if_db_exists(database,config["DEFAULT"]["db_user"])
+        check_if_db_exists(database,config["DEFAULT"]["db_user"],config["DEFAULT"]["remote_ip"],config["DEFAULT"]["remote_port"])
         
         if(config["DEFAULT"]["backup_name"]=="~date~.sql"):
             backup_name = datetime.datetime.now().strftime("%d")+"-"+datetime.datetime.now().strftime("%m")+".sql"

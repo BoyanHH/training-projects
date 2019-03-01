@@ -16,8 +16,12 @@ try:
     for database in config.get("DEFAULT", "db_name").split("\n"):
             print("Using db: "+database)
             if(config["DEFAULT"]["backup_db_type"]=="postgresql"):
-                import backup
-                exit_value=backup.main(config,database)  ##postgresql
+                if(config["DEFAULT"]["remote"]=="yes"):
+                    import remote
+                    exit_value=remote.main(config,database)
+                else:
+                    import backup
+                    exit_value=backup.main(config,database)  ##postgresql
         
             #else:
             #   sql_backup.main()
