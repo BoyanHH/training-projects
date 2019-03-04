@@ -16,15 +16,22 @@ try:
     for database in config.get("DEFAULT", "db_name").split("\n"):
             print("Using db: "+database)
             if(config["DEFAULT"]["backup_db_type"]=="postgresql"):
-                if(config["DEFAULT"]["remote"]=="yes"):
+                if(config["DEFAULT"]["remote_db"]=="yes"):
                     import remote
                     exit_value=remote.main(config,database)
                 else:
                     import backup
                     exit_value=backup.main(config,database)  ##postgresql
         
-            #else:
-            #   sql_backup.main()
+            else:
+                if(config["DEFAULT"]["remote_db"]=="yes"):
+                    import remote_mysql
+                    exit_value=remote_mysql.main(config,database)
+                else:    
+                    import mysql
+                    exit_value=mysql.main(config,database)
+
+                    
 except configparser.NoOptionError:
     sys.stderr.write("Erorr: Invalid/no option found for a row in config file")
     sys.exit(1)
