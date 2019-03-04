@@ -8,7 +8,7 @@ import datetime
 
 def check_dependencies():
     """Checks for dependencies
-       Mandatory dependencies are - mysqldump,psql,find,mkdir
+       Mandatory dependencies are - mysqldump,mysqlshow,find,mkdir
        Non-mandatory - gzip"""
     try:
 
