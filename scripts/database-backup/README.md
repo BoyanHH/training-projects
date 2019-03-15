@@ -15,7 +15,7 @@ backup_dir	   = /home/boyan/
   
 	;specify backup name. .sql and .gz can be added automatically  
 	;use ~date~ or ~dbname-date~ for built-in auto replacement  
-backup_name        = ~date~.sql  
+backup_name        = \~date\~.sql  
   
 	;Day on which backups will be put in /weekly/ directory  
 weekly_backup_day  = Wednesday  
