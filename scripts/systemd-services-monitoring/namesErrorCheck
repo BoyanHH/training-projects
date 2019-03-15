@@ -1,0 +1,15 @@
+apache2
+cron.service
+atftpd.service
+console-setup.service
+bluetooth.service
+nginx.service
+kbd.service
+certbot.service
+!@!@!@!@!
+
+
+-----
+o.service 
+rm /root/hello.txt
+festival
