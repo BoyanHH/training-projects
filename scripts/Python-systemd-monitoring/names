@@ -1,8 +1,0 @@
-apache2
-cron.service
-atftpd.service
-console-setup.service
-nginx.service
-kbd.service
-certbot.service
-festival
