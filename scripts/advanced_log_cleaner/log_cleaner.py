@@ -7,7 +7,6 @@ import os
 import glob
 import sys
 import argparse
-from pathlib import Path
 import fnmatch
 import re
 import signal
@@ -59,14 +58,12 @@ def too_many_files_in_directory_ls(directory,max_files,file_counter,pattern):
     """Called when a directory is over the maximum allowed files. By default it removes the oldest files\n
        Deletes as many files as necessary to get to the given limt(max_files option when running the script)"""
     
-    sys.stdout.write("Directory "+directory+" has too many files.("+str(int(file_counter)-int(max_files))+ " over the limit)\nStarting cleanup procedure\n")
-
+    sys.stdout.write("Directory "+directory+" has too many files.("+str(int(file_counter)-int(max_files))+ " over the limit)\nStarting cleanup procedure\n")    
     date_file_list = []
-##    for folder in glob.glob(directory):
-##        print("---")
-##        print(folder)
-##        print("---")
-    for file in glob.glob(directory + '/'+pattern):
+    
+    files = [f for f in os.listdir(directory) if os.path.isfile(directory+f)]
+    for file in fnmatch.filter(files, pattern):
+        file=directory+file
         print("file is " +file)
         stats = os.stat(file)
         lastmod_date = time.localtime(stats[8])
@@ -94,10 +91,12 @@ def too_many_files_in_directory_ls(directory,max_files,file_counter,pattern):
 def too_many_files_in_directory_rm(directory,max_files,file_counter):
     """Called when a directory is over the maximum allowed files. By default it removes the oldest files.\n
        Retruns amount of files left in directory. Deletes as many files as necessary until max_files(option) is reached\n"""
-    
+
+    sys.stdout.write("Directory "+directory+" has too many files.("+str(int(file_counter)-int(max_files))+ " over the limit)\nStarting cleanup procedure\n")    
     date_file_list = []
-    for folder in glob.glob(directory):
-        for file in glob.glob(folder + '/'+pattern):
+
+    files = [f for f in os.listdir(directory) if os.path.isfile(directory+f)]
+    for file in fnmatch.filter(files, pattern):
             stats = os.stat(file)
             lastmod_date = time.localtime(stats[8])
             date_file_tuple = lastmod_date, file
@@ -119,7 +118,7 @@ def too_many_files_in_directory_rm(directory,max_files,file_counter):
 def check_directory_files_ls(directory,max_files_per_dir,max_age,max_size,pattern,max_files_root_dir):
     """Lists directory files recursively and checks if files match given pattern.
        If they do, get their size and ctime, and compare them with given limits .
-       Will also count files in each directory."""
+       Will also count files in each subdirectory and the root directory."""
     
     root_file_counter = 0
     current_time_in_seconds=time.time()
@@ -152,6 +151,10 @@ def check_directory_files_ls(directory,max_files_per_dir,max_age,max_size,patter
         #check_directory_files_ls(directory,max_files_per_dir/2,max_age/2,max_size/2,pattern,max_files_root_dir)
                 
 def check_directory_files_rm(directory,max_files_per_dir,max_age,max_size,pattern,max_files_root_dir, run_number="1"):
+    """Check directory files recursively if they match the given pattern.
+       If they do, get their size and ctime, and compare them with given limits. Remove them if necessary
+       Will also count files in each subdirectory and the root directory."""
+    
     try:
         root_file_counter=0
         current_time_in_seconds=time.time()
@@ -187,6 +190,11 @@ def check_directory_files_rm(directory,max_files_per_dir,max_age,max_size,patter
 
                 
 def check_directory_files_trunc(directory,max_files_per_dir,max_age,max_size,pattern,max_files_root_dir):
+        """Check directory files recursively if they match the given pattern.
+       If they do, get their size and ctime, and compare them with given limits.
+       Truncate the entire file if necessary.
+       Will also count files in each subdirectory and the root directory."""
+        
     current_time_in_seconds=time.time()
     root_file_counter=0
     for root, directories, filenames in os.walk(directory):
